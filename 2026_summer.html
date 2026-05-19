@@ -1,0 +1,3018 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garmin 跑步训练分析报告</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0f1c;
+    --card: #111827;
+    --accent: #0ea5e9;
+    --accent2: #ec4899;
+    --accent3: #10b981;
+    --text: #f8fafc;
+    --text2: #94a3b8;
+    --border: #1e293b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    line-height: 1.6;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 680px; margin: 0 auto; padding: 16px 12px; }
+
+  /* Header */
+  h1 { font-size: 1.5rem; font-weight: 800; line-height: 1.3; margin-bottom: 6px; letter-spacing: -0.02em; }
+  h1 span { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .subtitle { color: var(--text2); font-size: 0.8rem; margin-bottom: 20px; line-height: 1.5; }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+  }
+  .card h2 { font-size: 1rem; margin-bottom: 12px; color: var(--accent); display: flex; align-items: center; gap: 6px; font-weight: 700; }
+  .card h2 .icon { font-size: 1.1rem; line-height: 1; }
+
+  /* Stats */
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px; }
+  .stat-box {
+    background: rgba(14,165,233,0.06);
+    border-radius: 8px;
+    padding: 8px 2px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+  .stat-box .num { font-size: 0.95rem; font-weight: 800; color: var(--accent); line-height: 1.2; }
+  .stat-box .label { color: var(--text2); font-size: 0.55rem; margin-top: 2px; line-height: 1.3; }
+
+  /* Charts */
+  .chart-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 8px; }
+  .chart-half { width: 100%; height: 130px; display: block; }
+  .chart-wrap { background: rgba(30,41,59,0.3); border-radius: 10px; padding: 4px; border: 1px solid var(--border); height: 142px; overflow: hidden; }
+  .chart-legend { display: none; }
+
+  /* Insights */
+  .insight {
+    background: rgba(14,165,233,0.05);
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin: 8px 0;
+    font-size: 0.85rem;
+  }
+  .insight.warning { background: rgba(251,146,60,0.05); }
+  .insight.good { background: rgba(16,185,129,0.05); }
+  .insight h4 { margin-bottom: 4px; color: var(--text); font-size: 0.85rem; font-weight: 700; line-height: 1.4; }
+  .insight p { color: var(--text2); font-size: 0.8rem; line-height: 1.6; }
+  .insight ul { margin: 4px 0 0 16px; color: var(--text2); font-size: 0.8rem; line-height: 1.7; }
+  .insight ul li { margin-bottom: 2px; }
+
+  .insight-tag {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    margin-right: 4px;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  .insight-tag.good { background: rgba(16,185,129,0.15); color: #34d399; }
+  .insight-tag.warning { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .insight-tag.info { background: rgba(14,165,233,0.15); color: #38bdf8; }
+
+  /* Table - mobile card style */
+  table { display: none; }
+  .mobile-table { display: block; }
+  table.calendar-table { display: table; }
+  .mobile-row {
+    background: rgba(30,41,59,0.4);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    font-size: 0.8rem;
+  }
+  .mobile-row .row-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .mobile-row .row-title { font-weight: 700; color: var(--accent); font-size: 0.85rem; }
+  .mobile-row .row-stats { color: var(--text2); font-size: 0.75rem; }
+  .mobile-row .row-types { color: var(--text2); font-size: 0.7rem; margin-top: 2px; line-height: 1.4; }
+
+  /* Schedule */
+  .schedule-day {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    background: rgba(30,41,59,0.4);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .schedule-day .day-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .schedule-day .day { font-weight: 800; color: var(--accent); font-size: 0.9rem; min-width: 36px; }
+  .schedule-day .tag-wrap { flex-shrink: 0; }
+  .schedule-day .content { color: var(--text); font-size: 0.8rem; line-height: 1.6; }
+  .schedule-day .content b { color: var(--text); font-weight: 700; }
+  .schedule-day .content br { display: block; content: ""; margin-bottom: 2px; }
+
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.65rem; font-weight: 700; white-space: nowrap; }
+  .tag-easy { background: rgba(16,185,129,0.15); color: #34d399; }
+  .tag-hard { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .tag-tempo { background: rgba(14,165,233,0.15); color: #38bdf8; }
+  .tag-long { background: rgba(139,92,246,0.15); color: #a78bfa; }
+
+  /* Prediction */
+  .prediction-box {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .pred-card {
+    background: rgba(14,165,233,0.05);
+    border-radius: 8px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .pred-card .left { flex: 1; }
+  .pred-card .dist { font-size: 0.75rem; color: var(--text2); margin-bottom: 2px; }
+  .pred-card .time { font-size: 1.3rem; font-weight: 800; color: var(--accent); line-height: 1.2; }
+  .pred-card .pace { font-size: 0.7rem; color: var(--text2); margin-top: 2px; }
+  .pred-card .arrow { font-size: 1rem; flex-shrink: 0; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    color: var(--text2);
+    font-size: 0.7rem;
+    margin-top: 24px;
+    padding-bottom: 24px;
+    line-height: 1.6;
+  }
+
+  /* Desktop override */
+
+  @media (min-width: 769px) {
+    .container { max-width: 1100px; padding: 40px 20px; }
+    h1 { font-size: 2.4rem; }
+    .subtitle { font-size: 1.1rem; margin-bottom: 40px; }
+    .card { padding: 28px; margin-bottom: 24px; border-radius: 16px; }
+    .card h2 { font-size: 1.4rem; margin-bottom: 16px; }
+    .card h2 .icon { font-size: 1.6rem; }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-box { padding: 20px; }
+    .stat-box .num { font-size: 2rem; }
+    .stat-box .label { font-size: 0.9rem; margin-top: 4px; }
+    .chart-row { grid-template-columns: 1fr 1fr; gap: 20px; }
+    .chart-half { height: 240px; }
+    .chart-wrap { padding: 16px; border-radius: 12px; height: 276px; }
+    .insight { padding: 16px 20px; margin: 12px 0; font-size: 0.95rem; }
+    .insight h4 { font-size: 0.95rem; }
+    .insight p, .insight ul { font-size: 0.9rem; }
+    .insight-tag { font-size: 0.75rem; padding: 2px 8px; margin-right: 6px; }
+    table { display: table; width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--accent); font-weight: 600; font-size: 0.9rem; }
+    td { color: var(--text2); font-size: 0.9rem; }
+    .mobile-table { display: none; }
+    .schedule-day {
+      display: grid;
+      grid-template-columns: 70px 1fr 110px;
+      gap: 16px;
+      align-items: start;
+      padding: 14px 16px;
+      flex-direction: row;
+    }
+    .schedule-day .day-row { display: contents; }
+    .schedule-day .day { font-size: 1rem; }
+    .schedule-day .content { font-size: 0.95rem; }
+    .tag { padding: 4px 10px; font-size: 0.75rem; }
+    .prediction-box { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .pred-card { flex-direction: column; text-align: center; padding: 20px; }
+    .pred-card .time { font-size: 1.8rem; margin: 8px 0; }
+    .pred-card .arrow { font-size: 1.2rem; margin-top: 8px; }
+    .footer { font-size: 0.85rem; margin-top: 40px; }
+  }
+
+  /* Week schedule (mobile-first) */
+  .week-block {
+    background: rgba(30,41,59,0.4);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+  }
+  .week-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+  }
+  .week-title .num { font-weight: 800; color: var(--accent); }
+  .week-title .date { color: var(--text2); }
+  .week-title .vol { color: var(--accent3); font-weight: 700; }
+  .day-list { display: flex; flex-direction: column; gap: 3px; }
+  .day-line {
+    display: grid;
+    grid-template-columns: 44px 80px 1fr;
+    gap: 6px;
+    align-items: start;
+    font-size: 0.85rem;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .day-line:last-child { border-bottom: none; }
+  .day-line .dn { color: var(--text2); font-weight: 600; white-space: nowrap; }
+  .day-line .tag { white-space: normal; word-break: break-word; line-height: 1.3; }
+  .day-line .dt { color: var(--text); line-height: 1.4; }
+
+  /* Desktop / mobile schedule toggle */
+  .desktop-schedule { display: none; }
+  .mobile-schedule { display: block; }
+
+  /* Phase badge */
+  .phase-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .phase-base { background: rgba(16,185,129,0.15); color: #34d399; }
+  .phase-build { background: rgba(14,165,233,0.15); color: #38bdf8; }
+  .phase-taper { background: rgba(245,158,11,0.15); color: #fbbf24; }
+
+  /* Body metrics */
+  .metric-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.78rem; white-space: nowrap; }
+  .metric-row .label { color: var(--text2); flex-shrink: 0; margin-right: 6px; }
+  .metric-row .value { color: var(--text); font-weight: 700; }
+  .metric-row .change { font-size: 0.65rem; margin-left: 3px; }
+
+  /* Note / RM */
+  .note { color: var(--text2); font-size: 0.75rem; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); line-height: 1.6; }
+
+  /* Distribution comparison grid */
+  .dist-grid { display: grid; grid-template-columns: 1fr; gap: 8px; font-size: 0.75rem; margin-top: 8px; }
+  .dist-card { background: rgba(30,41,59,0.4); border-radius: 8px; padding: 10px; border: 1px solid var(--border); }
+  .dist-card .dist-title { color: var(--accent); font-weight: 700; margin-bottom: 6px; }
+  .dist-card .dist-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+  .dist-card .dist-row:last-child { margin-bottom: 0; }
+  .dist-card .dist-row span:first-child { color: var(--text2); }
+  .dist-actual { color: #f59e0b; }
+  .dist-ideal { color: #34d399; }
+
+
+
+  /* Calendar table */
+  .calendar-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 16px;
+  }
+  .calendar-table {
+    width: 100%;
+    min-width: 640px;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+  }
+  .calendar-table th,
+  .calendar-table td {
+    border: 1px solid var(--border);
+    padding: 6px 4px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .calendar-table thead th {
+    background: rgba(14,165,233,0.08);
+    color: var(--accent);
+    font-weight: 700;
+    text-align: center;
+    padding: 8px 4px;
+  }
+  .calendar-table .col-week {
+    width: 56px;
+    min-width: 56px;
+    text-align: center;
+    background: rgba(30,41,59,0.4);
+  }
+  .calendar-table .col-day {
+    min-width: 70px;
+  }
+  .calendar-table .col-vol {
+    width: 48px;
+    min-width: 48px;
+    text-align: center;
+    background: rgba(16,185,129,0.06);
+    color: var(--accent3);
+    font-weight: 700;
+  }
+  .calendar-table .cell-week {
+    text-align: center;
+    font-weight: 700;
+    background: rgba(30,41,59,0.3);
+  }
+  .calendar-table .cell-day {
+    background: rgba(30,41,59,0.15);
+  }
+  .calendar-table .cell-vol {
+    text-align: center;
+    font-weight: 700;
+    color: var(--accent3);
+    background: rgba(16,185,129,0.06);
+  }
+  .calendar-table .day-date {
+    font-size: 0.7rem;
+    color: var(--text2);
+    margin-bottom: 2px;
+  }
+  .calendar-table .day-tag {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 10px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    margin-bottom: 3px;
+    white-space: nowrap;
+  }
+  .calendar-table .day-detail {
+    font-size: 0.7rem;
+    color: var(--text);
+    line-height: 1.4;
+    word-break: break-word;
+  }
+  .calendar-table .month-total {
+    text-align: right;
+    font-weight: 700;
+    color: var(--accent3);
+    background: rgba(16,185,129,0.06);
+    padding: 8px 12px;
+  }
+  .week-badge {
+    display: inline-block;
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: #fbbf24;
+    background: rgba(245,158,11,0.15);
+    margin-top: 2px;
+  }
+  @media (min-width: 769px) {
+    .week-block { padding: 14px 16px; margin-bottom: 12px; }
+    .week-title { font-size: 1rem; margin-bottom: 10px; }
+    .day-line { font-size: 0.95rem; padding: 5px 0; grid-template-columns: 50px 90px 1fr; }
+    .phase-badge { font-size: 0.75rem; padding: 3px 10px; }
+    .metric-row { font-size: 0.95rem; margin-bottom: 8px; }
+    .note { font-size: 0.85rem; margin-top: 16px; padding-top: 16px; }
+    .dist-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .dist-card { padding: 14px; }
+    .dist-card .dist-row { margin-bottom: 4px; }
+
+    .desktop-schedule { display: block; }
+    .mobile-schedule { display: none; }
+
+    .calendar-wrap {
+      margin-bottom: 24px;
+    }
+    .calendar-table {
+      min-width: 900px;
+      font-size: 0.85rem;
+    }
+    .calendar-table th,
+    .calendar-table td {
+      padding: 10px 8px;
+    }
+    .calendar-table .col-week {
+      width: 70px;
+      min-width: 70px;
+    }
+    .calendar-table .col-day {
+      min-width: 110px;
+    }
+    .calendar-table .col-vol {
+      width: 60px;
+      min-width: 60px;
+    }
+    .calendar-table .day-date {
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+    .calendar-table .day-tag {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      margin-bottom: 4px;
+    }
+    .calendar-table .day-detail {
+      font-size: 0.8rem;
+    }
+  }
+
+  /* Calendar compact override */
+  .calendar-table th,
+  .calendar-table td {
+    padding: 4px 2px;
+  }
+  .calendar-table .day-detail {
+    font-size: 0.7rem;
+    line-height: 1.3;
+  }
+  .calendar-table .day-tag {
+    font-size: 0.65rem;
+    padding: 1px 3px;
+    margin-bottom: 2px;
+  }
+  .calendar-table .day-date {
+    font-size: 0.7rem;
+    margin-bottom: 1px;
+  }
+  .calendar-table .cell-week,
+  .calendar-table .col-week {
+    width: 65px;
+    min-width: 65px;
+  }
+
+  /* PC no-scroll override */
+  @media (min-width: 769px) {
+    .calendar-wrap { overflow-x: visible; }
+    .calendar-table { min-width: 0; }
+    .calendar-table .day-tag { white-space: normal; font-size: 0.7rem; padding: 1px 4px; margin-bottom: 2px; }
+    .calendar-table .col-day { min-width: 0; }
+    .calendar-table .col-thu { width: 100px; min-width: 100px; }
+    .calendar-table .cell-thu { width: 100px; min-width: 100px; }
+    .calendar-table th,
+    .calendar-table td {
+      padding: 5px 3px;
+    }
+    .calendar-table .day-detail {
+      font-size: 0.75rem;
+      line-height: 1.3;
+    }
+    .calendar-table .day-date {
+      font-size: 0.75rem;
+      margin-bottom: 2px;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Garmin 跑步训练深度分析报告</h1>
+  <p class="subtitle">基于 2025.02 — 2026.05 共 393 次跑步数据 | 总量 4,523km | 含 5.17 半马比赛 | 专业马拉松教练视角</p>
+
+  <!-- 概览 -->
+  <div class="card">
+    <h2><span class="icon">&#128200;</span>核心数据概览</h2>
+    <div class="grid-4">
+      <div class="stat-box"><div class="num">393</div><div class="label">总跑步次数</div></div>
+      <div class="stat-box"><div class="num">4,523</div><div class="label">总跑量 (km)</div></div>
+      <div class="stat-box"><div class="num">68.3</div><div class="label">周均跑量 (km)</div></div>
+      <div class="stat-box"><div class="num">5:21</div><div class="label">轻松跑平均配速</div></div>
+    </div>
+    <div class="grid-4">
+      <div class="stat-box"><div class="num">3:04:01</div><div class="label">全马 PB</div></div>
+      <div class="stat-box"><div class="num">1:23:01</div><div class="label">半马 PB <span style="color:#34d399;font-size:0.7rem;">&#9660; 2:49</span></div></div>
+      <div class="stat-box"><div class="num">37:29</div><div class="label">10K PB</div></div>
+      <div class="stat-box"><div class="num">4:01</div><div class="label">阈值跑平均配速</div></div>
+    </div>
+    <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+      <div style="font-size:0.8rem; color:var(--accent); font-weight:700; margin-bottom:8px;">身体成分（2026.05）</div>
+      <div class="grid-4">
+        <div class="stat-box"><div class="num">66.6</div><div class="label">体重 (kg)</div></div>
+        <div class="stat-box"><div class="num">12.9%</div><div class="label">体脂率</div></div>
+        <div class="stat-box"><div class="num">32.7</div><div class="label">骨骼肌 (kg)</div></div>
+        <div class="stat-box"><div class="num">174</div><div class="label">身高 (cm)</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 核心结论 -->
+  <div class="card">
+    <h2><span class="icon">&#128161;</span>核心结论与诊断</h2>
+
+    <div class="insight good">
+      <h4><span class="insight-tag good">重大利好</span>1. 5.17 半马大幅刷新 PB — 速度能力远超当前全马水平</h4>
+      <p>5 月 17 日大兴半马跑出 <b>1:23:01（配速 3:55/km）</b>，较原 PB 1:25:50 提升 2:49。按 Daniels VDOT 表，这个成绩对应 VDOT 约 <b>55</b>，同等级全马理论值约 <b>2:50-2:55</b>。这说明你的速度能力已足够支撑秋季<b>2:51:30</b>目标，全马 3:04 的瓶颈纯粹在于<b>有氧耐力没有兑现速度潜力</b>，而非速度天花板。</p>
+    </div>
+
+    <div class="insight warning">
+      <h4><span class="insight-tag warning">首要短板</span>2. 长距离"质"的问题 —— 66%心率落在Z3，Z2有氧刺激不足</h4>
+      <p>过去半年 56 次 20km+ 长距离中，<b>66% 的心率时间落在 Z3（节奏区）</b>，仅约 12% 在 Z2（有氧区）。长距离平均配速 4:46，处于马配和轻松跑之间的"灰色地带"——既不够慢（无法充分建立有氧基础），也不够快@马配（无法建立专项耐力）。这是训练结构失衡的核心原因。</p>
+    </div>
+
+    <div class="insight warning">
+      <h4><span class="insight-tag warning">跑量缺口</span>3. 周跑量偏低 —— Sub-3 需要稳定 80km+/周</h4>
+      <p>周均跑量约 68km。虽然 20km+ 长距离频次较高（56 次），但总跑量仍不足以支撑 Sub-3 的有氧耐力储备。建议在保持长距离质量的前提下，逐步提升周跑量至 80-100km。</p>
+    </div>
+
+    <div class="insight warning">
+      <h4><span class="insight-tag warning">结构失衡</span>4. 训练分布"中间粗"——长距离大量滑入Z3灰色地带</h4>
+      <p>心率分布：Z3（节奏）33.3% + Z4（阈值）33.7% 合计 67%，Z2（有氧）仅 24.3%。关键原因不是轻松跑太慢，而是<b>长距离没有慢下来</b>——20km+ 训练中 66% 心率在 Z3，本应练 Z2 有氧的长距离跑到了节奏区。轻松跑平均配速 5:21（合理），但长距离平均 4:46（偏快）。</p>
+    </div>
+
+    <div class="insight good">
+      <h4><span class="insight-tag good">基础扎实</span>5. 间歇训练执行较好，力量训练有基础</h4>
+      <p>周二间歇训练累计 34 次，跑团跟训质量稳定。5.17 半马证实了你的速度能力。力量训练（深蹲/硬拉/核心）有安排但频次和负重进度不清晰。</p>
+    </div>
+
+    <div class="insight">
+      <h4><span class="insight-tag info">瓶颈定位</span>6. 为什么半马与全马差距大？——数据给出新答案</h4>
+      <p>按 Daniels VDOT 表，半马 1:23:01 对应 VDOT 约 <b>55</b>，同等级全马理论值约 2:55。但全马实际仅 3:04，说明<b>耐力效率比速度能力低了 4-5 个 VDOT 点</b>。重新分析数据后，差距的根源是：</p>
+      <ul style="margin-left:20px; margin-top:6px; color:var(--text2);">
+        <li><b>长距离"量够质不够"</b>：56 次 20km+，但 66% 心率在 Z3，没有有效刺激 Z2 有氧系统</li>
+        <li><b>轻松跑配速合理</b>：平均 5:21，不是轻松跑太慢导致 Z3 占比偏高</li>
+        <li><b>Z3 占比高的根源</b>：长距离没慢下来，跑到了节奏区，而非"灰色地带"慢跑过多</li>
+        <li><b>佳明手表验证</b>：提示"低强度有氧偏低、高强度有氧偏高"，与数据分析完全一致——缺少真正的 Z2 低强度有氧</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 图表区 -->
+  <div class="card">
+    <h2><span class="icon">&#128202;</span>训练数据分析</h2>
+    <div class="chart-row">
+      <div class="chart-wrap">
+        <canvas id="hrChart" class="chart-half"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="paceChart" class="chart-half"></canvas>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:center; gap:16px; margin-top:6px; font-size:0.65rem; color:var(--text2);">
+      <span style="display:inline-flex; align-items:center; gap:4px;"><i style="display:inline-block; width:10px; height:6px; border-radius:2px; background:#34d399;"></i>彩色柱 = 实际占比</span>
+      <span style="display:inline-flex; align-items:center; gap:4px;"><i style="display:inline-block; width:14px; height:0; border-top:2px dashed #94a3b8;"></i>灰色虚线 = 理想占比</span>
+    </div>
+
+  </div>
+
+  <!-- 月度详情 -->
+  <div class="card">
+    <h2><span class="icon">&#128197;</span>月度训练结构</h2>
+    <div class="chart-wrap" style="height:260px;">
+      <canvas id="monthlyChart"></canvas>
+    </div>
+    <script>
+      (function() {
+        var ctx = document.getElementById('monthlyChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05'],
+            datasets: [
+              {
+                label: '月跑量 (km)',
+                data: [274.5, 329.1, 393.2, 404.1, 215.7, 224.5, 290.6, 193.1],
+                backgroundColor: 'rgba(16,185,129,0.6)',
+                borderColor: '#10b981',
+                borderWidth: 1,
+                yAxisID: 'y',
+                order: 2
+              },
+              {
+                label: '轻松跑',
+                data: [5, 6, 7, 6, 7, 2, 9, 5],
+                type: 'line',
+                borderColor: '#34d399',
+                backgroundColor: '#34d399',
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                yAxisID: 'y1',
+                order: 1
+              },
+              {
+                label: '间歇跑',
+                data: [0, 1, 1, 0, 0, 1, 3, 2],
+                type: 'line',
+                borderColor: '#ec4899',
+                backgroundColor: '#ec4899',
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                yAxisID: 'y1',
+                order: 1
+              },
+              {
+                label: '阈值跑',
+                data: [1, 1, 2, 1, 1, 3, 1, 0],
+                type: 'line',
+                borderColor: '#f59e0b',
+                backgroundColor: '#f59e0b',
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                yAxisID: 'y1',
+                order: 1
+              },
+              {
+                label: '节奏跑',
+                data: [9, 10, 16, 14, 6, 10, 5, 4],
+                type: 'line',
+                borderColor: '#0ea5e9',
+                backgroundColor: '#0ea5e9',
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                yAxisID: 'y1',
+                order: 1
+              },
+              {
+                label: '恢复跑',
+                data: [9, 7, 9, 10, 8, 10, 7, 2],
+                type: 'line',
+                borderColor: '#94a3b8',
+                backgroundColor: '#94a3b8',
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                yAxisID: 'y1',
+                order: 1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+              tooltip: {
+                backgroundColor: 'rgba(17,24,39,0.9)',
+                titleColor: '#f8fafc',
+                bodyColor: '#f8fafc',
+                borderColor: '#1e293b',
+                borderWidth: 1
+              }
+            },
+            scales: {
+              x: {
+                ticks: { color: '#94a3b8', font: { size: 10 } },
+                grid: { color: 'rgba(30,41,59,0.5)' }
+              },
+              y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: { display: true, text: '跑量 (km)', color: '#94a3b8', font: { size: 10 } },
+                ticks: { color: '#94a3b8', font: { size: 10 } },
+                grid: { color: 'rgba(30,41,59,0.5)' }
+              },
+              y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: { display: true, text: '训练次数', color: '#94a3b8', font: { size: 10 } },
+                ticks: { color: '#94a3b8', font: { size: 10 } },
+                grid: { drawOnChartArea: false }
+              }
+            }
+          }
+        });
+      })();
+    </script>
+  </div>
+
+  <!-- 课表设定逻辑 -->
+  <div class="card">
+    <h2><span class="icon">&#128736;</span>课表配速体系与训练逻辑</h2>
+    <div class="insight">
+      <h4>训练类型定义</h4>
+      <ul style="margin-left:20px; color:var(--text2); line-height:1.7;">
+        <li><b>恢复跑</b>：5:20-5:40/km（@520-540），心率 &lt; 140，安排在强度课次日或力量训练后，目的是促进血流恢复。</li>
+        <li><b>轻松跑</b>：4:40-5:00/km（@440-500），心率 140-150（Z2），是日常有氧跑的主体配速，应感觉"可以轻松聊天"。</li>
+        <li><b>LSD</b>：4:45-5:00/km（@445-500），心率 140-148（Z2偏下），距离 18-26km，目的是建立有氧基础。注意：450 配速对你可能心率已压到 Z1 偏下，因此 LSD 允许比轻松跑略慢，确保心率不滑入 Z3。</li>
+        <li><b>阈值跑（T）</b>：3:52-3:55/km（@352-355）起步，强化期推进到 3:48-3:52（@348-352），心率 170-175，对应乳酸阈值配速。</li>
+        <li><b>间歇跑（I）</b>：按跑团课表执行，通常 3:30-3:45/km，心率 &gt; 180。</li>
+        <li><b>马配长距离</b>：后段 12-20km @4:03-4:10（@403-410），前段有氧热身 4:20-4:50。</li>
+      </ul>
+    </div>
+    <div class="insight warning">
+      <h4>夏季配速调整原则（6-8月）</h4>
+      <p>高温高湿环境下，同等配速心率会高 5-10bpm。夏季训练<strong>以心率为准、配速为辅</strong>：</p>
+      <ul style="margin-left:20px; color:var(--text2); line-height:1.7;">
+        <li>阈值课：目标心率 170-175，配速可放宽到 3:55-4:05，甚至 4:10</li>
+        <li>马配长距离：心率控制在 160-165，配速 4:05-4:15 均可接受</li>
+        <li>LSD：严格压心率 &lt; 150，若 4:50 心率仍在 Z1，可放到 5:00-5:15</li>
+        <li>间歇/阈值后次日恢复跑：宁可再慢 10-20 秒，确保心率 &lt; 140</li>
+      </ul>
+    </div>
+    <div class="insight good">
+      <h4>10K 测试目标（渐进，不激进）</h4>
+      <p>当前 PB 37:29，秋季极限目标 36:00-36:30。课表中测试序列为：</p>
+      <ul style="margin-left:20px; color:var(--text2); line-height:1.7;">
+        <li>5 月底：37:00-37:30（摸底当前水平）</li>
+        <li>6 月底：36:30-37:00（小幅进步）</li>
+        <li>7 月底：36:00-36:30（接近目标区间）</li>
+        <li>8 月底：36:00-36:30（维持，强化期重点在马配长距离）</li>
+        <li>9 月底：36:00-36:30（减量期极限测试，验证速度能力未退化）</li>
+      </ul>
+    </div>
+  </div>
+
+                                          <!-- 周期化训练课表（日历模式）-->
+    <div class="card">
+      <h2><span class="icon">&#128221;</span>夏训完整周期课表（5.18 – 10.11）</h2>
+      <p style="color:var(--text2); margin-bottom:16px;">秋季主目标 <b>全马 2:51:30</b>（配速 4:03/km），半马检测目标 1:21:00-1:22:00。周跑量 60→100→35km，分三阶段：基础期（9周）→ 强化期（10周）→ 减量期（2周）。每周一从5.18起算。</p>
+
+      <div class="chart-wrap" style="height:240px; margin-bottom:12px;">
+        <canvas id="planChart"></canvas>
+      </div>
+      <div style="display:flex; justify-content:center; gap:16px; margin-bottom:20px; flex-wrap:wrap; font-size:0.75rem; color:var(--text2);">
+        <span>总跑量 <b style="color:var(--accent3);">1624km</b></span>
+        <span>力量训练 <b style="color:var(--accent2);">104次</b></span>
+        <span>周期 <b style="color:var(--accent);">21周</b></span>
+      </div>
+      <script>
+        (function() {
+          var vols = [65,72,58,73,78,75,78,80,84,89,93,80,100,105,103,83,103,87,55,38,25];
+          var ctx = document.getElementById('planChart').getContext('2d');
+          new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: ['第1周','第2周','第3周','第4周','第5周','第6周','第7周','第8周','第9周','第10周','第11周','第12周','第13周','第14周','第15周','第16周','第17周','第18周','第19周','第20周','第21周'],
+              datasets: [
+                {
+                  label: '周跑量 (km)',
+                  data: vols,
+                  backgroundColor: 'rgba(16,185,129,0.6)',
+                  borderColor: '#10b981',
+                  borderWidth: 1,
+                  yAxisID: 'y',
+                  order: 2
+                },
+                {
+                  label: '轻松跑',
+                  data: [66.2,45.8,50.0,58.9,64.1,44.0,37.2,45.0,42.9,9.0,40.9,41.2,8.0,36.2,36.9,39.8,7.8,9.2,14.5,42.1,68.0],
+                  type: 'line',
+                  borderColor: '#34d399',
+                  backgroundColor: '#34d399',
+                  borderWidth: 2,
+                  pointRadius: 2,
+                  pointHoverRadius: 4,
+                  yAxisID: 'y1',
+                  order: 1
+                },
+                {
+                  label: '恢复跑',
+                  data: [35.4,30.6,36.2,35.6,35.9,33.3,26.9,33.8,29.8,28.1,24.7,28.7,25.0,23.8,22.3,27.7,22.3,24.1,36.4,28.9,0.0],
+                  type: 'line',
+                  borderColor: '#94a3b8',
+                  backgroundColor: '#94a3b8',
+                  borderWidth: 2,
+                  pointRadius: 2,
+                  pointHoverRadius: 4,
+                  yAxisID: 'y1',
+                  order: 1
+                },
+                {
+                  label: '阈值跑',
+                  data: [0.0,13.9,6.9,0.0,0.0,13.3,5.1,12.5,11.9,3.4,10.8,5.0,6.0,7.6,9.7,6.0,11.7,9.2,18.2,0.0,0.0],
+                  type: 'line',
+                  borderColor: '#f59e0b',
+                  backgroundColor: '#f59e0b',
+                  borderWidth: 2,
+                  pointRadius: 2,
+                  pointHoverRadius: 4,
+                  yAxisID: 'y1',
+                  order: 1
+                },
+                {
+                  label: '节奏跑',
+                  data: [6.2,5.6,6.9,5.5,5.1,5.3,5.1,5.0,4.8,40.4,4.3,5.0,39.0,3.8,3.9,4.8,37.9,39.1,43.6,65.8,36.0],
+                  type: 'line',
+                  borderColor: '#0ea5e9',
+                  backgroundColor: '#0ea5e9',
+                  borderWidth: 2,
+                  pointRadius: 2,
+                  pointHoverRadius: 4,
+                  yAxisID: 'y1',
+                  order: 1
+                },
+                {
+                  label: '间歇跑',
+                  data: [15.4,13.9,17.2,13.7,12.8,13.3,12.8,12.5,11.9,11.2,10.8,12.5,10.0,9.5,9.7,12.0,9.7,11.5,18.2,26.3,40.0],
+                  type: 'line',
+                  borderColor: '#ec4899',
+                  backgroundColor: '#ec4899',
+                  borderWidth: 2,
+                  pointRadius: 2,
+                  pointHoverRadius: 4,
+                  yAxisID: 'y1',
+                  order: 1
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: 'index', intersect: false },
+              plugins: {
+                legend: { labels: { color: '#94a3b8', font: { size: 10 } } },
+                tooltip: {
+                  backgroundColor: 'rgba(17,24,39,0.9)',
+                  titleColor: '#f8fafc',
+                  bodyColor: '#f8fafc',
+                  borderColor: '#1e293b',
+                  borderWidth: 1,
+                  callbacks: {
+                    label: function(context) {
+                      var datasetLabel = context.dataset.label || '';
+                      var value = context.raw;
+                      var dataIndex = context.dataIndex;
+                      var vol = vols[dataIndex];
+                      if (datasetLabel === '周跑量 (km)') {
+                        return datasetLabel + ': ' + value + 'km';
+                      }
+                      var dist = (value / 100 * vol).toFixed(1);
+                      return datasetLabel + ': ' + dist + 'km (' + value.toFixed(1) + '%)';
+                    }
+                  }
+                }
+              },
+              scales: {
+                x: {
+                  ticks: { color: '#94a3b8', font: { size: 9 } },
+                  grid: { color: 'rgba(30,41,59,0.5)' }
+                },
+                y: {
+                  type: 'linear',
+                  display: true,
+                  position: 'left',
+                  title: { display: true, text: '跑量 (km)', color: '#94a3b8', font: { size: 10 } },
+                  ticks: { color: '#94a3b8', font: { size: 10 } },
+                  grid: { color: 'rgba(30,41,59,0.5)' }
+                },
+                y1: {
+                  type: 'linear',
+                  display: true,
+                  position: 'right',
+                  title: { display: true, text: '占比 (%)', color: '#94a3b8', font: { size: 10 } },
+                  ticks: { color: '#94a3b8', font: { size: 10 }, callback: function(value) { return value + '%'; } },
+                  grid: { drawOnChartArea: false }
+                }
+              }
+            }
+          });
+        })();
+      </script>
+
+      <div class="desktop-schedule">
+      <h3 style="font-size:0.95rem; color:var(--text); margin:20px 0 10px; display:flex; align-items:center; gap:8px;">5月 <span class="phase-badge phase-base">基础期</span></h3>
+      <div class="calendar-wrap">
+      <table class="calendar-table">
+        <thead>
+          <tr>
+            <th class="col-week">周数</th>
+            <th class="col-day">一</th>
+            <th class="col-day">二</th>
+            <th class="col-day">三</th>
+            <th class="col-day col-thu">四</th>
+            <th class="col-day">五</th>
+            <th class="col-day">六</th>
+            <th class="col-day">日</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-week">第1周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">65km</span></td>
+            <td class="cell-day">
+              <div class="day-date">5.18</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 夹胸4×12（12RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">5.19</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">5.20</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×10（10RM）</span><br><span style="color:#fbbf24"> 划船4×10（10RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">5.21</div>
+              <div class="day-tag tag-easy">轻松跑</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km@440-500，心率<150</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">5.22</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×10（10RM）</span><br><span style="color:#fbbf24"> 侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">5.23</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">25km，平均配速@445-500 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">5.24</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 死虫/鸟狗/侧平板 20min</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第2周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">72km</span></td>
+            <td class="cell-day">
+              <div class="day-date">5.25</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 夹胸4×12（12RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">5.26</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">5.27</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×10（10RM）</span><br><span style="color:#fbbf24"> 划船4×10（10RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">5.28</div>
+              <div class="day-tag tag-tempo">测试</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km全力测试 @目标37:00-37:30</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">5.29</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×10（10RM）</span><br><span style="color:#fbbf24"> 侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">5.30</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">25km，平均配速@445-500（测试后减量） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">5.31</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="8" class="month-total">5月总跑量：137km</td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+
+      <h3 style="font-size:0.95rem; color:var(--text); margin:20px 0 10px; display:flex; align-items:center; gap:8px;">6月 <span class="phase-badge phase-base">基础期</span></h3>
+      <div class="calendar-wrap">
+      <table class="calendar-table">
+        <thead>
+          <tr>
+            <th class="col-week">周数</th>
+            <th class="col-day">一</th>
+            <th class="col-day">二</th>
+            <th class="col-day">三</th>
+            <th class="col-day col-thu">四</th>
+            <th class="col-day">五</th>
+            <th class="col-day">六</th>
+            <th class="col-day">日</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-week">第3周<br><span class="week-badge">调整周</span><br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">58km</span></td>
+            <td class="cell-day">
+              <div class="day-date">6.01</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×12（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×12（减载）</span><br><span style="color:#fbbf24"> 夹胸3×15（减载）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.02</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.03</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 引体向上3×4（减载）</span><br><span style="color:#fbbf24"> 高位下拉3×12（减载）</span><br><span style="color:#fbbf24"> 划船3×12（减载）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">6.04</div>
+              <div class="day-tag tag-tempo">阈值</div>
+              <div class="day-detail"><span style="color:#38bdf8">4km@355（调整周维持强度，短距离）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.05</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举3×12（减载）</span><br><span style="color:#fbbf24"> 侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 俯身侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 负重摆臂1min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.06</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">21km，平均配速@445-500（低强度恢复） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.07</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第4周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">73km</span></td>
+            <td class="cell-day">
+              <div class="day-date">6.08</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 夹胸4×12（12RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.09</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.10</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×10（10RM）</span><br><span style="color:#fbbf24"> 划船4×10（10RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">6.11</div>
+              <div class="day-tag tag-easy">轻松跑</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km@440-500（减量恢复）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.12</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×10（10RM）</span><br><span style="color:#fbbf24"> 侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.13</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">25km，平均配速@445-500（减量） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.14</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第5周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">78km</span></td>
+            <td class="cell-day">
+              <div class="day-date">6.15</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 夹胸4×12（12RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.16</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.17</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×10（10RM）</span><br><span style="color:#fbbf24"> 划船4×10（10RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">6.18</div>
+              <div class="day-tag tag-easy">轻松跑</div>
+              <div class="day-detail"><span style="color:#38bdf8">14km@440-500</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.19</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×10（10RM）</span><br><span style="color:#fbbf24"> 侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.20</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">28km，平均配速@445-500 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.21</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第6周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">75km</span></td>
+            <td class="cell-day">
+              <div class="day-date">6.22</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 夹胸4×12（12RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.23</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.24</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×10（10RM）</span><br><span style="color:#fbbf24"> 划船4×10（10RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">6.25</div>
+              <div class="day-tag tag-tempo">测试</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km全力测试 @目标36:30-37:00（6月最后一周）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.26</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×10（10RM）</span><br><span style="color:#fbbf24"> 侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.27</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">25km，平均配速@445-500（测试后减量） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.28</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="8" class="month-total">6月总跑量：284km</td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+
+      <h3 style="font-size:0.95rem; color:var(--text); margin:20px 0 10px; display:flex; align-items:center; gap:8px;">7月 <span class="phase-badge phase-base">基础期</span><span class="phase-badge phase-build">强化期</span></h3>
+      <div class="calendar-wrap">
+      <table class="calendar-table">
+        <thead>
+          <tr>
+            <th class="col-week">周数</th>
+            <th class="col-day">一</th>
+            <th class="col-day">二</th>
+            <th class="col-day">三</th>
+            <th class="col-day col-thu">四</th>
+            <th class="col-day">五</th>
+            <th class="col-day">六</th>
+            <th class="col-day">日</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-week">第7周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">78km</span></td>
+            <td class="cell-day">
+              <div class="day-date">6.29</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×12（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×12（减载）</span><br><span style="color:#fbbf24"> 夹胸3×15（减载）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">6.30</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.01</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 引体向上3×4（减载）</span><br><span style="color:#fbbf24"> 高位下拉3×12（减载）</span><br><span style="color:#fbbf24"> 划船3×12（减载）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">7.02</div>
+              <div class="day-tag tag-tempo">阈值</div>
+              <div class="day-detail"><span style="color:#38bdf8">4km@355（调整周维持强度，短距离）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.03</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举3×12（减载）</span><br><span style="color:#fbbf24"> 侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 俯身侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 负重摆臂1min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.04</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">21km，平均配速@445-500（低强度恢复） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.05</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第8周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">80km</span></td>
+            <td class="cell-day">
+              <div class="day-date">7.06</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 夹胸4×12（12RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.07</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.08</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×10（10RM）</span><br><span style="color:#fbbf24"> 划船4×10（10RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">7.09</div>
+              <div class="day-tag tag-tempo">阈值</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km中含4km@352（渐进）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.10</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×10（10RM）</span><br><span style="color:#fbbf24"> 侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.11</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">28km，平均配速@445-500 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.12</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第9周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">84km</span></td>
+            <td class="cell-day">
+              <div class="day-date">7.13</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.14</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.15</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">7.16</div>
+              <div class="day-tag tag-tempo">阈值</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km中含5km@352（减量恢复）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.17</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.18</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">28km，平均配速@445-500（基础期末减量） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.19</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第10周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">89km</span></td>
+            <td class="cell-day">
+              <div class="day-date">7.20</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.21</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.22</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">7.23</div>
+              <div class="day-tag tag-tempo">阈值</div>
+              <div class="day-detail"><span style="color:#38bdf8">3km×3组@352-355，组间慢跑800m</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.24</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.25</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">32km，平均配速@420 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.26</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第11周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">93km</span></td>
+            <td class="cell-day">
+              <div class="day-date">7.27</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.28</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.29</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">7.30</div>
+              <div class="day-tag tag-tempo">测试</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km全力测试 @目标36:00-36:30</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">7.31</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.01</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">30km，平均配速@445-500（测试后减量） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.02</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="8" class="month-total">7月总跑量：424km</td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+
+      <h3 style="font-size:0.95rem; color:var(--text); margin:20px 0 10px; display:flex; align-items:center; gap:8px;">8月 <span class="phase-badge phase-build">强化期</span></h3>
+      <div class="calendar-wrap">
+      <table class="calendar-table">
+        <thead>
+          <tr>
+            <th class="col-week">周数</th>
+            <th class="col-day">一</th>
+            <th class="col-day">二</th>
+            <th class="col-day">三</th>
+            <th class="col-day col-thu">四</th>
+            <th class="col-day">五</th>
+            <th class="col-day">六</th>
+            <th class="col-day">日</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-week">第12周<br><span class="week-badge">调整周</span><br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">80km</span></td>
+            <td class="cell-day">
+              <div class="day-date">8.03</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×12（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×12（减载）</span><br><span style="color:#fbbf24"> 夹胸3×15（减载）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.04</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.05</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 引体向上3×4（减载）</span><br><span style="color:#fbbf24"> 高位下拉3×12（减载）</span><br><span style="color:#fbbf24"> 划船3×12（减载）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">8.06</div>
+              <div class="day-tag tag-tempo">阈值</div>
+              <div class="day-detail"><span style="color:#38bdf8">4km@355（调整周维持强度，短距离）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.07</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举3×12（减载）</span><br><span style="color:#fbbf24"> 侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 俯身侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 负重摆臂1min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.08</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">25km，平均配速@445-500（低强度恢复） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.09</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第13周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">100km</span></td>
+            <td class="cell-day">
+              <div class="day-date">8.10</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.11</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.12</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">8.13</div>
+              <div class="day-tag tag-tempo">阈值</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km×2组@350-352，组间慢跑800m</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.14</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.15</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">35km，平均配速@420 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.16</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第14周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">105km</span></td>
+            <td class="cell-day">
+              <div class="day-date">8.17</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.18</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.19</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">8.20</div>
+              <div class="day-tag tag-tempo">阈值</div>
+              <div class="day-detail"><span style="color:#38bdf8">8km×2组@348-352（第1组8km@352，第2组8km@348）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.21</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.22</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">30km，平均配速@445-500 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.23</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第15周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">103km</span></td>
+            <td class="cell-day">
+              <div class="day-date">8.24</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.25</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.26</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">8.27</div>
+              <div class="day-tag tag-tempo">测试</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km全力测试 @目标36:00-36:30</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.28</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.29</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">30km，平均配速@445-500（测试后减量） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">8.30</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第16周<br><span class="week-badge">调整周</span><br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">83km</span></td>
+            <td class="cell-day">
+              <div class="day-date">8.31</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×12（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×12（减载）</span><br><span style="color:#fbbf24"> 夹胸3×15（减载）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.01</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.02</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 引体向上3×4（减载）</span><br><span style="color:#fbbf24"> 高位下拉3×12（减载）</span><br><span style="color:#fbbf24"> 划船3×12（减载）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">9.03</div>
+              <div class="day-tag tag-tempo">阈值</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@352-355（调整周维持强度）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.04</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举3×12（减载）</span><br><span style="color:#fbbf24"> 侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 俯身侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 负重摆臂1min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.05</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">25km，平均配速@445-500（低强度恢复） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.06</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="8" class="month-total">8月总跑量：471km</td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+
+      <h3 style="font-size:0.95rem; color:var(--text); margin:20px 0 10px; display:flex; align-items:center; gap:8px;">9月 <span class="phase-badge phase-build">强化期</span><span class="phase-badge phase-taper">减量期</span></h3>
+      <div class="calendar-wrap">
+      <table class="calendar-table">
+        <thead>
+          <tr>
+            <th class="col-week">周数</th>
+            <th class="col-day">一</th>
+            <th class="col-day">二</th>
+            <th class="col-day">三</th>
+            <th class="col-day col-thu">四</th>
+            <th class="col-day">五</th>
+            <th class="col-day">六</th>
+            <th class="col-day">日</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-week">第17周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">103km</span></td>
+            <td class="cell-day">
+              <div class="day-date">9.07</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.08</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.09</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">9.10</div>
+              <div class="day-tag tag-tempo">阈值</div>
+              <div class="day-detail"><span style="color:#38bdf8">12km中含8km@348-352（强化期末峰值）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.11</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.12</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">35km，平均配速@410-415 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.13</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第18周<br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">87km</span></td>
+            <td class="cell-day">
+              <div class="day-date">9.14</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×12（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×12（减载）</span><br><span style="color:#fbbf24"> 夹胸3×15（减载）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.15</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.16</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 引体向上3×4（减载）</span><br><span style="color:#fbbf24"> 高位下拉3×12（减载）</span><br><span style="color:#fbbf24"> 划船3×12（减载）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">9.17</div>
+              <div class="day-tag tag-tempo">阈值</div>
+              <div class="day-detail"><span style="color:#38bdf8">8km@350-352（强化期末峰值）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.18</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举3×12（减载）</span><br><span style="color:#fbbf24"> 侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 俯身侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 负重摆臂1min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.19</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">30km，平均配速@410-415 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.20</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第19周<br><span class="week-badge">减量第1周·测试</span><br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">55km</span></td>
+            <td class="cell-day">
+              <div class="day-date">9.21</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×10（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×10（减载）</span><br><span style="color:#fbbf24"> 夹胸2×15（轻量）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.22</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲3×8（8RM）</span><br><span style="color:#fbbf24"> 硬拉3×8（8RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲2×15（15RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.23</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 引体向上2×4（轻量）</span><br><span style="color:#fbbf24"> 高位下拉3×10（减载）</span><br><span style="color:#fbbf24"> 划船3×10（减载）</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">9.24</div>
+              <div class="day-tag tag-tempo">测试</div>
+              <div class="day-detail"><span style="color:#38bdf8">10km测试 @目标36:00-36:30（监控速度能力未退化）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.25</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举3×10（减载）</span><br><span style="color:#fbbf24"> 侧平举3×12（减载）</span><br><span style="color:#fbbf24"> 俯身侧平举3×12（减载）</span><br><span style="color:#fbbf24"> 负重摆臂1min×3</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.26</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km中含12km@405-410（减量恢复） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲2×15 </span><br><span style="color:#fbbf24"> 单侧硬拉2×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲2×10 </span><br><span style="color:#fbbf24"> 单侧提踵2×20 </span><br><span style="color:#fbbf24"> 站姿髋外展2×15</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.27</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cell-week">第20周<br><span class="week-badge">减量第2周</span><br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">38km</span></td>
+            <td class="cell-day">
+              <div class="day-date">9.28</div>
+              <div class="day-tag tag-easy">力+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×10（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×10（减载）</span><br><span style="color:#fbbf24"> 夹胸2×15（轻量）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.29</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲3×8（8RM）</span><br><span style="color:#fbbf24"> 硬拉3×8（8RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲2×15（15RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">9.30</div>
+              <div class="day-tag tag-easy">轻松跑</div>
+              <div class="day-detail"><span style="color:#38bdf8">8km@440-500</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">10.01</div>
+              <div class="day-tag tag-tempo">马配</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km中含4km@405-410</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">10.02</div>
+              <div class="day-tag tag-easy">休息</div>
+              <div class="day-detail">完全休息或步行30min</div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">10.03</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">15km中含10km@405-410 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲2×15 </span><br><span style="color:#fbbf24"> 单侧硬拉2×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲2×10 </span><br><span style="color:#fbbf24"> 单侧提踵2×20 </span><br><span style="color:#fbbf24"> 站姿髋外展2×15</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">10.04</div>
+              <div class="day-tag tag-easy">激活+恢</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 拉伸放松</span></div>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="8" class="month-total">9月总跑量：283km</td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+
+      <h3 style="font-size:0.95rem; color:var(--text); margin:20px 0 10px; display:flex; align-items:center; gap:8px;">10月 <span class="phase-badge phase-taper">比赛周</span></h3>
+      <div class="calendar-wrap">
+      <table class="calendar-table">
+        <thead>
+          <tr>
+            <th class="col-week">周数</th>
+            <th class="col-day">一</th>
+            <th class="col-day">二</th>
+            <th class="col-day">三</th>
+            <th class="col-day col-thu">四</th>
+            <th class="col-day">五</th>
+            <th class="col-day">六</th>
+            <th class="col-day">日</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-week">第21周<br><span class="week-badge">比赛周</span><br><span style="color:var(--accent3);font-weight:700;font-size:0.65rem;">25km+比赛</span></td>
+            <td class="cell-day">
+              <div class="day-date">10.05</div>
+              <div class="day-tag tag-easy">休息</div>
+              <div class="day-detail">完全休息，补充糖原</div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">10.06</div>
+              <div class="day-tag tag-hard">跑团速度训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲3×8（8RM）</span><br><span style="color:#fbbf24"> 硬拉3×8（8RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲2×15（15RM）</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">10.07</div>
+              <div class="day-tag tag-easy">轻松跑</div>
+              <div class="day-detail"><span style="color:#38bdf8">6km@440-500，心率<140</span></div>
+            </td>
+            <td class="cell-day cell-thu">
+              <div class="day-date">10.08</div>
+              <div class="day-tag tag-tempo">马配</div>
+              <div class="day-detail"><span style="color:#38bdf8">5km中含3km@405-410，保持节奏感</span></div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">10.09</div>
+              <div class="day-tag tag-easy">休息</div>
+              <div class="day-detail">完全休息，高碳水饮食</div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">10.10</div>
+              <div class="day-tag tag-long">长距离训练</div>
+              <div class="day-detail"><span style="color:#38bdf8">3km，平均配速@445-500 </span><br> 动态拉伸 <br> 领取参赛包</div>
+            </td>
+            <td class="cell-day">
+              <div class="day-date">10.11</div>
+              <div class="day-tag tag-long">比赛日</div>
+              <div class="day-detail"><span style="color:#38bdf8">全程马拉松 目标2:51:30（配速4:03/km）</span></div>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="8" class="month-total">10月总跑量：25km</td>
+          </tr>
+        </tfoot>
+      </table>
+      </div>
+
+      </div>
+
+      <div class="mobile-schedule">
+        <h3 style="font-size:0.95rem; color:var(--text); margin:20px 0 10px; display:flex; align-items:center; gap:8px;">5月 <span class="phase-badge phase-base">基础期</span></h3>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第1周</span>
+            <span class="date">5.18 – 5.24</span>
+            <span class="vol">65km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 夹胸4×12（12RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×10（10RM）</span><br><span style="color:#fbbf24"> 划船4×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-easy">轻松跑</span>
+              <span class="dt"><span style="color:#38bdf8">10km@440-500，心率<150</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×10（10RM）</span><br><span style="color:#fbbf24"> 侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">25km，平均配速@445-500 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 死虫/鸟狗/侧平板 20min</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第2周</span>
+            <span class="date">5.25 – 5.31</span>
+            <span class="vol">72km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 夹胸4×12（12RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×10（10RM）</span><br><span style="color:#fbbf24"> 划船4×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">测试</span>
+              <span class="dt"><span style="color:#38bdf8">10km全力测试 @目标37:00-37:30</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×10（10RM）</span><br><span style="color:#fbbf24"> 侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">25km，平均配速@445-500（测试后减量） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <h3 style="font-size:0.95rem; color:var(--text); margin:20px 0 10px; display:flex; align-items:center; gap:8px;">6月 <span class="phase-badge phase-base">基础期</span></h3>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第3周</span>
+            <span class="week-badge">调整周</span>
+            <span class="date">6.01 – 6.07</span>
+            <span class="vol">58km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×12（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×12（减载）</span><br><span style="color:#fbbf24"> 夹胸3×15（减载）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 引体向上3×4（减载）</span><br><span style="color:#fbbf24"> 高位下拉3×12（减载）</span><br><span style="color:#fbbf24"> 划船3×12（减载）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">阈值</span>
+              <span class="dt"><span style="color:#38bdf8">4km@355（调整周维持强度，短距离）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举3×12（减载）</span><br><span style="color:#fbbf24"> 侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 俯身侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 负重摆臂1min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">21km，平均配速@445-500（低强度恢复） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第4周</span>
+            <span class="date">6.08 – 6.14</span>
+            <span class="vol">73km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 夹胸4×12（12RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×10（10RM）</span><br><span style="color:#fbbf24"> 划船4×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-easy">轻松跑</span>
+              <span class="dt"><span style="color:#38bdf8">10km@440-500（减量恢复）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×10（10RM）</span><br><span style="color:#fbbf24"> 侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">25km，平均配速@445-500（减量） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第5周</span>
+            <span class="date">6.15 – 6.21</span>
+            <span class="vol">78km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 夹胸4×12（12RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×10（10RM）</span><br><span style="color:#fbbf24"> 划船4×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-easy">轻松跑</span>
+              <span class="dt"><span style="color:#38bdf8">14km@440-500</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×10（10RM）</span><br><span style="color:#fbbf24"> 侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">28km，平均配速@445-500 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">10km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第6周</span>
+            <span class="date">6.22 – 6.28</span>
+            <span class="vol">75km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 夹胸4×12（12RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×10（10RM）</span><br><span style="color:#fbbf24"> 划船4×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">测试</span>
+              <span class="dt"><span style="color:#38bdf8">10km全力测试 @目标36:30-37:00（6月最后一周）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×10（10RM）</span><br><span style="color:#fbbf24"> 侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">25km，平均配速@445-500（测试后减量） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <h3 style="font-size:0.95rem; color:var(--text); margin:20px 0 10px; display:flex; align-items:center; gap:8px;">7月 <span class="phase-badge phase-base">基础期</span><span class="phase-badge phase-build">强化期</span></h3>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第7周</span>
+            <span class="date">6.29 – 7.05</span>
+            <span class="vol">78km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×12（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×12（减载）</span><br><span style="color:#fbbf24"> 夹胸3×15（减载）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 引体向上3×4（减载）</span><br><span style="color:#fbbf24"> 高位下拉3×12（减载）</span><br><span style="color:#fbbf24"> 划船3×12（减载）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">阈值</span>
+              <span class="dt"><span style="color:#38bdf8">4km@355（调整周维持强度，短距离）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举3×12（减载）</span><br><span style="color:#fbbf24"> 侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 俯身侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 负重摆臂1min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">21km，平均配速@445-500（低强度恢复） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第8周</span>
+            <span class="date">7.06 – 7.12</span>
+            <span class="vol">80km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×10（10RM）</span><br><span style="color:#fbbf24"> 夹胸4×12（12RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×10（10RM）</span><br><span style="color:#fbbf24"> 划船4×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">阈值</span>
+              <span class="dt"><span style="color:#38bdf8">10km中含4km@352（渐进）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×10（10RM）</span><br><span style="color:#fbbf24"> 侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×12（12RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">28km，平均配速@445-500 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">10km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第9周</span>
+            <span class="date">7.13 – 7.19</span>
+            <span class="vol">84km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲4×10（10RM）</span><br><span style="color:#fbbf24"> 罗马尼亚硬拉3×10（10RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲3×12（15RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">阈值</span>
+              <span class="dt"><span style="color:#38bdf8">10km中含5km@352（减量恢复）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">28km，平均配速@445-500（基础期末减量） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×15 </span><br><span style="color:#fbbf24"> 单侧硬拉3×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10 </span><br><span style="color:#fbbf24"> 单侧提踵3×20 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第10周</span>
+            <span class="date">7.20 – 7.26</span>
+            <span class="vol">89km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">阈值</span>
+              <span class="dt"><span style="color:#38bdf8">3km×3组@352-355，组间慢跑800m</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">32km，平均配速@420 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">10km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第11周</span>
+            <span class="date">7.27 – 8.02</span>
+            <span class="vol">93km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">测试</span>
+              <span class="dt"><span style="color:#38bdf8">10km全力测试 @目标36:00-36:30</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">30km，平均配速@445-500（测试后减量） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <h3 style="font-size:0.95rem; color:var(--text); margin:20px 0 10px; display:flex; align-items:center; gap:8px;">8月 <span class="phase-badge phase-build">强化期</span></h3>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第12周</span>
+            <span class="week-badge">调整周</span>
+            <span class="date">8.03 – 8.09</span>
+            <span class="vol">80km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×12（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×12（减载）</span><br><span style="color:#fbbf24"> 夹胸3×15（减载）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 引体向上3×4（减载）</span><br><span style="color:#fbbf24"> 高位下拉3×12（减载）</span><br><span style="color:#fbbf24"> 划船3×12（减载）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">阈值</span>
+              <span class="dt"><span style="color:#38bdf8">4km@355（调整周维持强度，短距离）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举3×12（减载）</span><br><span style="color:#fbbf24"> 侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 俯身侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 负重摆臂1min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">25km，平均配速@445-500（低强度恢复） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第13周</span>
+            <span class="date">8.10 – 8.16</span>
+            <span class="vol">100km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">阈值</span>
+              <span class="dt"><span style="color:#38bdf8">6km×2组@350-352，组间慢跑800m</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">35km，平均配速@420 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">10km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第14周</span>
+            <span class="date">8.17 – 8.23</span>
+            <span class="vol">105km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">阈值</span>
+              <span class="dt"><span style="color:#38bdf8">8km×2组@348-352（第1组8km@352，第2组8km@348）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">30km，平均配速@445-500 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">10km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第15周</span>
+            <span class="date">8.24 – 8.30</span>
+            <span class="vol">103km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">测试</span>
+              <span class="dt"><span style="color:#38bdf8">10km全力测试 @目标36:00-36:30</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">30km，平均配速@445-500（测试后减量） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第16周</span>
+            <span class="week-badge">调整周</span>
+            <span class="date">8.31 – 9.06</span>
+            <span class="vol">83km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×12（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×12（减载）</span><br><span style="color:#fbbf24"> 夹胸3×15（减载）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 引体向上3×4（减载）</span><br><span style="color:#fbbf24"> 高位下拉3×12（减载）</span><br><span style="color:#fbbf24"> 划船3×12（减载）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">阈值</span>
+              <span class="dt"><span style="color:#38bdf8">5km@352-355（调整周维持强度）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举3×12（减载）</span><br><span style="color:#fbbf24"> 侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 俯身侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 负重摆臂1min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">25km，平均配速@445-500（低强度恢复） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <h3 style="font-size:0.95rem; color:var(--text); margin:20px 0 10px; display:flex; align-items:center; gap:8px;">9月 <span class="phase-badge phase-build">强化期</span><span class="phase-badge phase-taper">减量期</span></h3>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第17周</span>
+            <span class="date">9.07 – 9.13</span>
+            <span class="vol">103km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 上斜卧推4×8（8RM）</span><br><span style="color:#fbbf24"> 夹胸3×10（10RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量15min </span><br><span style="color:#fbbf24"> 引体向上4×4 </span><br><span style="color:#fbbf24"> 高位下拉4×8（8RM）</span><br><span style="color:#fbbf24"> 划船4×8（8RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">阈值</span>
+              <span class="dt"><span style="color:#38bdf8">12km中含8km@348-352（强化期末峰值）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举4×8（8RM）</span><br><span style="color:#fbbf24"> 侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 俯身侧平举4×10（10RM）</span><br><span style="color:#fbbf24"> 负重摆臂2min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">35km，平均配速@410-415 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">8km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第18周</span>
+            <span class="date">9.14 – 9.20</span>
+            <span class="vol">87km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×12（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×12（减载）</span><br><span style="color:#fbbf24"> 夹胸3×15（减载）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重（7RM）深蹲5×5 </span><br><span style="color:#fbbf24"> 负重（7RM）硬拉5×5 </span><br><span style="color:#fbbf24"> 负重（15RM）哑铃箭步蹲3×10</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 引体向上3×4（减载）</span><br><span style="color:#fbbf24"> 高位下拉3×12（减载）</span><br><span style="color:#fbbf24"> 划船3×12（减载）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">阈值</span>
+              <span class="dt"><span style="color:#38bdf8">8km@350-352（强化期末峰值）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举3×12（减载）</span><br><span style="color:#fbbf24"> 侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 俯身侧平举3×15（减载）</span><br><span style="color:#fbbf24"> 负重摆臂1min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">30km，平均配速@410-415 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲3×12（可加弹力带）</span><br><span style="color:#fbbf24"> 单侧硬拉3×10 </span><br><span style="color:#fbbf24"> 保加利亚蹲3×10（可手持哑铃）</span><br><span style="color:#fbbf24"> 单侧提踵3×15 </span><br><span style="color:#fbbf24"> 站姿髋外展3×15（可加弹力带）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第19周</span>
+            <span class="week-badge">减量第1周·测试</span>
+            <span class="date">9.21 – 9.27</span>
+            <span class="vol">55km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×10（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×10（减载）</span><br><span style="color:#fbbf24"> 夹胸2×15（轻量）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲3×8（8RM）</span><br><span style="color:#fbbf24"> 硬拉3×8（8RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲2×15（15RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 引体向上2×4（轻量）</span><br><span style="color:#fbbf24"> 高位下拉3×10（减载）</span><br><span style="color:#fbbf24"> 划船3×10（减载）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">测试</span>
+              <span class="dt"><span style="color:#38bdf8">10km测试 @目标36:00-36:30（监控速度能力未退化）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 坐姿推举3×10（减载）</span><br><span style="color:#fbbf24"> 侧平举3×12（减载）</span><br><span style="color:#fbbf24"> 俯身侧平举3×12（减载）</span><br><span style="color:#fbbf24"> 负重摆臂1min×3</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km中含12km@405-410（减量恢复） </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲2×15 </span><br><span style="color:#fbbf24"> 单侧硬拉2×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲2×10 </span><br><span style="color:#fbbf24"> 单侧提踵2×20 </span><br><span style="color:#fbbf24"> 站姿髋外展2×15</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第20周</span>
+            <span class="week-badge">减量第2周</span>
+            <span class="date">9.28 – 10.04</span>
+            <span class="vol">38km</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">力+恢</span>
+              <span class="dt"><span style="color:#38bdf8">5km@520-540 </span><br><span style="color:#fbbf24"> 核心力量10min </span><br><span style="color:#fbbf24"> 卧推3×10（减载）</span><br><span style="color:#fbbf24"> 上斜卧推3×10（减载）</span><br><span style="color:#fbbf24"> 夹胸2×15（轻量）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲3×8（8RM）</span><br><span style="color:#fbbf24"> 硬拉3×8（8RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲2×15（15RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">轻松跑</span>
+              <span class="dt"><span style="color:#38bdf8">8km@440-500</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">马配</span>
+              <span class="dt"><span style="color:#38bdf8">6km中含4km@405-410</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">休息</span>
+              <span class="dt">完全休息或步行30min</span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">15km中含10km@405-410 </span><br><span style="color:#fbbf24"> <b>自重力量训练</b></span><br><span style="color:#fbbf24">深蹲2×15 </span><br><span style="color:#fbbf24"> 单侧硬拉2×12 </span><br><span style="color:#fbbf24"> 保加利亚蹲2×10 </span><br><span style="color:#fbbf24"> 单侧提踵2×20 </span><br><span style="color:#fbbf24"> 站姿髋外展2×15</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-easy">激活+恢</span>
+              <span class="dt"><span style="color:#38bdf8">6km@520-540 </span><br><span style="color:#fbbf24"> 拉伸放松</span></span>
+            </div>
+          </div>
+        </div>
+        <h3 style="font-size:0.95rem; color:var(--text); margin:20px 0 10px; display:flex; align-items:center; gap:8px;">10月 <span class="phase-badge phase-taper">比赛周</span></h3>
+        <div class="week-block">
+          <div class="week-title">
+            <span class="num">第21周</span>
+            <span class="week-badge">比赛周</span>
+            <span class="date">10.05 – 10.11</span>
+            <span class="vol">25km+比赛</span>
+          </div>
+          <div class="day-list">
+            <div class="day-line">
+              <span class="dn">周一</span>
+              <span class="tag tag-easy">休息</span>
+              <span class="dt">完全休息，补充糖原</span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周二</span>
+              <span class="tag tag-hard">跑团速度训练</span>
+              <span class="dt"><span style="color:#38bdf8">20km间歇组合训练 </span><br><span style="color:#fbbf24"> <b>下肢力量训练</b></span><br><span style="color:#fbbf24">负重深蹲3×8（8RM）</span><br><span style="color:#fbbf24"> 硬拉3×8（8RM）</span><br><span style="color:#fbbf24"> 哑铃箭步蹲2×15（15RM）</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周三</span>
+              <span class="tag tag-easy">轻松跑</span>
+              <span class="dt"><span style="color:#38bdf8">6km@440-500，心率<140</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周四</span>
+              <span class="tag tag-tempo">马配</span>
+              <span class="dt"><span style="color:#38bdf8">5km中含3km@405-410，保持节奏感</span></span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周五</span>
+              <span class="tag tag-easy">休息</span>
+              <span class="dt">完全休息，高碳水饮食</span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周六</span>
+              <span class="tag tag-long">长距离训练</span>
+              <span class="dt"><span style="color:#38bdf8">3km，平均配速@445-500 </span><br> 动态拉伸 <br> 领取参赛包</span>
+            </div>
+            <div class="day-line">
+              <span class="dn">周日</span>
+              <span class="tag tag-long">比赛日</span>
+              <span class="dt"><span style="color:#38bdf8">全程马拉松 目标2:51:30（配速4:03/km）</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="note">
+        <b>RM 说明</b>：RM = Repetition Maximum，指该重量下能完成的最大重复次数。8-12RM 即选择一组做 8-12 次就力竭的重量，是肌肥大训练的最优区间。上肢训练采用 8-12RM 增肌塑形，下肢采用 5RM 大重量提升神经募集和爆发力，避免过度肌肥大影响跑步经济性。
+      </div>
+      <div class="note">
+        <b>训练优先级（时间不足时）</b>：当周若因故只能保留 1–2 节课，优先保全 <b>周六长距离课（LSD/马配长距）</b> 和 <b>周二间歇/阈值主课</b>。前者是跑量和有氧耐力的根基，后者直接刺激最大摄氧量和乳酸阈值。其余力量训练、轻松跑、恢复跑均可适度压缩或省略，但需保证连续两天不跑强度。
+      </div>
+    </div>
+
+
+    <!-- 增肌减脂方案 -->
+  <div class="card">
+    <h2><span class="icon">&#128170;</span>增肌减脂 + 跑步并行方案</h2>
+
+    <div class="insight good">
+      <h4>核心策略：身体成分重组（Body Recomposition）</h4>
+      <p>马拉松训练和增肌减脂并不矛盾，关键在于<b>热量管理和训练时机</b>。你的目标不是"快速减脂"或"快速增肌"，而是在提升跑步成绩的同时，通过渐进的力量训练和蛋白质优先的饮食策略，实现肌肉增长和脂肪减少的同步进行。</p>
+    </div>
+
+    <div class="insight">
+      <h4>1. 营养方案</h4>
+      <ul style="margin-left:20px; color:var(--text2);">
+        <li><b>蛋白质</b>：每日 1.8-2.2g/kg 体重（约 130-160g）。分 4-5 餐摄入，训练后 30 分钟内补充 25-30g 乳清蛋白 + 快碳（香蕉/白面包）。</li>
+        <li><b>热量</b>：维持日消耗或轻度赤字（-100 至 -200kcal/天）。周末长距离日可增加碳水摄入（+200kcal），避免糖原耗尽。</li>
+        <li><b>碳水周期</b>：周二间歇/周四阈值/周六长距离为高碳日（5-6g/kg），其余日为中低碳水（3-4g/kg），周日为低碳日（2-3g/kg）促进脂肪氧化。</li>
+        <li><b>脂肪</b>：不低于 0.8g/kg（约 55-65g），优先来自坚果、鱼油、橄榄油。</li>
+      </ul>
+    </div>
+
+    <div class="insight">
+      <h4>2. 力量训练设计</h4>
+      <ul style="margin-left:20px; color:var(--text2);">
+        <li><b>上肢（周一/三/五）</b>：采用 8-12RM 的肌肥大区间，组间休息 60-90s。重点动作：卧推/哑铃推举（推）、引体/划船（拉）、侧平举/面拉（肩后束）。</li>
+        <li><b>下肢（周二）</b>：大重量低次数（5RM 左右），组间休息 2-3min。深蹲和硬拉提升最大力量和爆发力，不追求肌肥大。</li>
+        <li><b>核心（每天）</b>：周日/周一/三/五做抗伸展/抗旋转训练（死虫式、鸟狗式、帕洛夫推举），周二/六做稳定性训练（平板支撑、侧平板）。</li>
+        <li><b>渐进原则</b>：上肢每周增加 2.5kg 或 1-2 次；下肢每 2 周增加 2.5-5kg。</li>
+      </ul>
+    </div>
+
+    <div class="insight">
+      <h4>3. 跑步与力量的时间排布</h4>
+      <ul style="margin-left:20px; color:var(--text2);">
+        <li><b>最佳方案</b>：上午力量（30-40min）+ 傍晚跑步（或反之），间隔 6-8 小时。这样力量训练不会降低跑步质量，跑步也不会干扰力量恢复。</li>
+        <li><b>紧凑方案</b>：力量后休息 30-60min 再跑步。此时上肢力量后的血液循环集中在胸部/背部，下肢疲劳较小，适合慢跑恢复。</li>
+        <li><b>避免</b>：跑步后立即做大重量力量训练（疲劳状态下易受伤）。</li>
+      </ul>
+    </div>
+
+    <div class="insight warning">
+      <h4>4. 监控指标</h4>
+      <ul style="margin-left:20px; color:var(--text2);">
+        <li><b>每周称重</b>：同一时间（晨起空腹）称重，观察趋势。目标：体重基本稳定或微降（-0.5kg/月），但力量和跑步表现持续提升。</li>
+        <li><b>围度测量</b>：每 2 周测量胸围/臂围/腰围。胸围/臂围应缓慢增加，腰围缓慢减少。</li>
+        <li><b>跑步指标</b>：监控静息心率（应逐渐降低）、10k 测试成绩（应逐渐提升）、长距离后程掉速幅度（应逐渐缩小）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 5个月预测 -->
+  <div class="card">
+    <h2><span class="icon">&#127937;</span>5 个月后水平预测（2026-10）</h2>
+    <p style="color:var(--text2); margin-bottom:12px;">按 Daniels VDOT 表，当前 10K 37:29 / 半马 1:23:01 对应 VDOT 约 <b>55-56</b>，同等级全马理论值约 <b>2:50-2:55</b>。但全马实际仅 3:04，说明<b>耐力效率比速度能力低了约 5 个 VDOT 点</b>。秋季训练的核心不是"变得更快"，而是<b>把已有的速度能力兑现到全马上</b>。以下为与全马 2:51:30 目标匹配的能力预测：</p>
+    <div class="prediction-box">
+      <div class="pred-card">
+        <div class="left">
+          <div class="dist">10K</div>
+          <div class="time">36:30</div>
+          <div class="pace">配速 3:39/km</div>
+        </div>
+        <div class="arrow" style="color:#34d399;">&#9660; 0:59</div>
+      </div>
+      <div class="pred-card">
+        <div class="left">
+          <div class="dist">半程马拉松</div>
+          <div class="time">1:21:30</div>
+          <div class="pace">配速 3:52/km</div>
+        </div>
+        <div class="arrow" style="color:#34d399;">&#9660; 1:31</div>
+      </div>
+      <div class="pred-card">
+        <div class="left">
+          <div class="dist">全程马拉松</div>
+          <div class="time">2:51:30</div>
+          <div class="pace">配速 4:03/km</div>
+        </div>
+        <div class="arrow" style="color:#34d399;">&#9660; 12:31</div>
+      </div>
+    </div>
+    <div style="margin-top:16px; padding:12px; background:rgba(30,41,59,0.4); border-radius:8px; border:1px solid var(--border);">
+      <div style="font-size:0.8rem; color:var(--accent); font-weight:700; margin-bottom:10px;">秋季比赛身体成分预测（保守可达成）</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <div class="metric-row"><span class="label">体重</span><span class="value">66.6→65.5kg<span class="change" style="color:#34d399">-1.1kg</span></span></div>
+        <div class="metric-row"><span class="label">体脂率</span><span class="value">12.9→11.0%<span class="change" style="color:#34d399">-1.9%</span></span></div>
+        <div class="metric-row"><span class="label">脂肪量</span><span class="value">8.6→7.2kg<span class="change" style="color:#34d399">-1.4kg</span></span></div>
+        <div class="metric-row"><span class="label">骨骼肌</span><span class="value">32.7→33.8kg<span class="change" style="color:#34d399">+1.1kg</span></span></div>
+        <div class="metric-row"><span class="label">BMI</span><span class="value">22.0→21.6<span class="change" style="color:#34d399">-0.4</span></span></div>
+        <div class="metric-row"><span class="label">肌肉率</span><span class="value">49.1→51.6%<span class="change" style="color:#34d399">+2.5%</span></span></div>
+      </div>
+      <p style="color:var(--text2); font-size:0.75rem; margin-top:10px; line-height:1.5;">预测前提：干净饮食 + 蛋白质 1.8-2.2g/kg + 周跑量 90km + 上肢力量 3次/周。体重微降来自脂肪减少，骨骼肌增长来自系统化力量训练。目标保守但可达成——体脂率破 11% 同时肌肉量上升，是典型的身体成分重组（Body Recomposition）结果。</p>
+    </div>
+
+    <div class="insight" style="margin-top:16px;">
+      <h4>预测依据</h4>
+      <p>按 Daniels VDOT 表，当前 10K 37:29 / 半马 1:23:01 对应 VDOT 约 <b>55-56</b>，同等级全马理论值约 <b>2:50-2:55</b>。但全马实际仅 3:04，说明<b>耐力效率比速度能力低了约 5 个 VDOT 点</b>。目标 2:51:30 对应 VDOT <b>56-57</b>，与 10K 36:00-36:30、半马 1:21-1:22 完全匹配。秋季训练的核心不是"变得更快"，而是<b>把已有的速度能力兑现到全马 42km 上</b>。未来 5 个月关键是完成 <b>8-10 次马配长距离</b>（25-32km 中含 12-20km@403-410）和 <b>12-15 次真·LSD</b>（25-32km@450-510，心率压在 Z2），配合周跑量稳定在 85-95km：</p>
+      <ul style="margin-left:20px; margin-top:6px; color:var(--text2);">
+        <li><b>糖原储备与脂肪氧化能力</b>：大量 Z2 LSD + 马配长距离，提升 30km 后能量供应效率</li>
+        <li><b>慢肌纤维耐力</b>：周跑量 85km+ 配合长距离质量改善，可弥补当前 5 个 VDOT 点的耐力缺口</li>
+        <li><b>乳酸清除效率</b>：阈值训练维持现有水平（当前阈值平均 4:01 已足够），重点在于延长乳酸耐受时间</li>
+        <li><b>后程力量储备</b>：力量训练 + 长距离马配跑，预防 35km 后步频下降和核心不稳</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="text-align:center; color:var(--text2); font-size:0.85rem; margin-top:40px; padding-bottom:20px;">
+    Generated by Garmin Health Analysis Skill | Data from 2025-02 to 2026-05 | 393 Activities | Updated with 5.17 Half Marathon
+  </div>
+</div>
+
+<script>
+// Data labels plugin
+const dataLabels = {
+  id: 'dataLabels',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    const barMeta = chart.getDatasetMeta(1); // bar dataset is index 1
+    const data = chart.data.datasets[1].data;
+    barMeta.data.forEach((bar, index) => {
+      const val = data[index];
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = '#f1f5f9';
+      ctx.font = 'bold 9px "PingFang SC", -apple-system, sans-serif';
+      ctx.fillText(val + '%', bar.x, bar.y - 4);
+      ctx.restore();
+    });
+  }
+};
+
+// HR zones
+new Chart(document.getElementById('hrChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Z1恢复','Z2有氧','Z3节奏','Z4阈值','Z5最大'],
+    datasets: [
+      {
+        type: 'line',
+        label: '理想',
+        data: [10,60,15,10,5],
+        borderColor: '#94a3b8',
+        borderWidth: 1.5,
+        borderDash: [4,3],
+        pointRadius: 3,
+        pointBackgroundColor: 'transparent',
+        pointBorderColor: '#94a3b8',
+        pointBorderWidth: 1.5,
+        fill: false,
+        tension: 0,
+        order: 1
+      },
+      {
+        type: 'bar',
+        label: '实际',
+        data: [3.8,22.9,31.5,32.0,9.8],
+        backgroundColor: ['#34d399','#a78bfa','#fbbf24','#fb923c','#ef4444'],
+        borderRadius: 3,
+        barPercentage: 0.5,
+        order: 2
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      title: { display: true, text: '心率区间', color: '#f1f5f9', font: {size:11}, padding: {top:2,bottom:4} },
+      dataLabels: {}
+    },
+    scales: {
+      x: { ticks: { color: '#94a3b8', font: {size:8} } },
+      y: {
+        max: 100,
+        ticks: { color: '#94a3b8', stepSize: 20 },
+        grid: { color: 'rgba(51,65,85,0.6)' }
+      }
+    }
+  },
+  plugins: [dataLabels]
+});
+
+// Pace zones
+new Chart(document.getElementById('paceChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Z1恢复','Z2轻松','Z3马配','Z4阈值','Z5间歇'],
+    datasets: [
+      {
+        type: 'line',
+        label: '理想',
+        data: [15,40,20,15,10],
+        borderColor: '#94a3b8',
+        borderWidth: 1.5,
+        borderDash: [4,3],
+        pointRadius: 3,
+        pointBackgroundColor: 'transparent',
+        pointBorderColor: '#94a3b8',
+        pointBorderWidth: 1.5,
+        fill: false,
+        tension: 0,
+        order: 1
+      },
+      {
+        type: 'bar',
+        label: '实际',
+        data: [22.4,17.1,28.6,15.0,16.9],
+        backgroundColor: ['#34d399','#a78bfa','#fbbf24','#fb923c','#ef4444'],
+        borderRadius: 3,
+        barPercentage: 0.5,
+        order: 2
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      title: { display: true, text: '配速区间', color: '#f1f5f9', font: {size:11}, padding: {top:2,bottom:4} },
+      dataLabels: {}
+    },
+    scales: {
+      x: { ticks: { color: '#94a3b8', font: {size:8} } },
+      y: {
+        max: 100,
+        ticks: { color: '#94a3b8', stepSize: 20 },
+        grid: { color: 'rgba(51,65,85,0.6)' }
+      }
+    }
+  },
+  plugins: [dataLabels]
+});
+</script>
+</body>
+</html>
